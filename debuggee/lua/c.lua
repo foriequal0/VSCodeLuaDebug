@@ -1,3 +1,5 @@
-return function(fn)
-	fn()
-end
+return
+	--v function(fn: function())
+	function(fn)
+		fn()
+	end

@@ -1,6 +1,8 @@
+--# open lua51
+
 -- 유티에프-팔
 require 'strict'
-package.path = '?.lua;lua/?.lua;' .. package.path
+package.path = '?.lua;lua/?.lua;'
 local json = require 'dkjson'
 
 local function onError(e)

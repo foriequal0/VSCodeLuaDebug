@@ -35,9 +35,11 @@ local DO_TEST = false
 
 -------------------------------------------------------------------------------
 -- chunkname 매칭 {{{
+--v function(a: vector<string>, b: vector<string>) --> integer
 local function getMatchCount(a, b)
-	local n = math.min(#a, #b)
-	for i = 0, n - 1 do
+	local n = math.min(#a, #b) --# assume n: integer
+
+	for i = 0, n - 1 do --# assume i: integer
 		if a[#a - i] == b[#b - i] then
 			-- pass
 		else
@@ -55,12 +57,13 @@ if DO_TEST then
 	assert(getMatchCount({'a','b','c'}, {'a','b','c','d'}) == 0)
 end
 
+--v function(s: string) --> vector<string>
 local function splitChunkName(s)
 	if string.sub(s, 1, 1) == '@' then
 		s = string.sub(s, 2)
 	end
 
-	local a = {}
+	local a = {} --: vector<string>
 	for word in string.gmatch(s, '[^/\\]+') do
 		a[#a + 1] = string.lower(word)
 	end
@@ -90,7 +93,7 @@ end
 -- 패스 조작 {{{
 local Path = {}
 
-function Path.isAbsolute(a)
+function Path.isAbsolute(a) --: string --> boolean
 	local firstChar = string.sub(a, 1, 1)
 	if firstChar == '/' or
 	   firstChar == '\\' then
@@ -104,6 +107,7 @@ function Path.isAbsolute(a)
 	return false
 end
 
+--v function(a: string, b: string) --> string
 function Path.concat(a, b)
 	-- a를 노멀라이즈
 	local lastChar = string.sub(a, #a, #a)
@@ -140,10 +144,12 @@ end
 local coroutineSet = {}
 setmetatable(coroutineSet, { __mode = 'v' })
 
+--# assume debug.getchunknames: function() --> map<string, true>
+
 -- 순정 모드 {{{
 local function createHaltBreaker()
 	-- chunkname 매칭 {
-	local loadedChunkNameMap = {}
+	local loadedChunkNameMap = {} --: map<string, vector<string>>
 	for chunkname, _ in pairs(debug.getchunknames()) do
 		loadedChunkNameMap[chunkname] = splitChunkName(chunkname)
 	end
