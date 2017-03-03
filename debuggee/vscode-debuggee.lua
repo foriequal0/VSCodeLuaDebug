@@ -39,7 +39,7 @@ local DO_TEST = false
 local function getMatchCount(a, b)
 	local n = math.min(#a, #b) --# assume n: integer
 
-	for i = 0, n - 1 do --# assume i: integer
+	for i = 0, n - 1 do
 		if a[#a - i] == b[#b - i] then
 			-- pass
 		else
@@ -144,20 +144,28 @@ end
 local coroutineSet = {}
 setmetatable(coroutineSet, { __mode = 'v' })
 
---# assume debug.getchunknames: function() --> map<string, true>
+-- assume debug.getchunknames: function() --> map<string, true>
+local dummy --: function() --> WHATEVER
+debug.getchunknames = dummy
+
+-- assume debug.sethalt: function(string, integer)
+local dummy2 --: function(string, integer)
+debug.sethalt = dummy2
+
 
 -- 순정 모드 {{{
 local function createHaltBreaker()
 	-- chunkname 매칭 {
 	local loadedChunkNameMap = {} --: map<string, vector<string>>
 	for chunkname, _ in pairs(debug.getchunknames()) do
+		--# assume chunkname: string
 		loadedChunkNameMap[chunkname] = splitChunkName(chunkname)
 	end
 
 	local function findMostSimilarChunkName(path)
 		local splitedReqPath = splitChunkName(path)
 		local maxMatchCount = 0
-		local foundChunkName = nil 
+		local foundChunkName = nil --: string
 		for chunkName, splitted in pairs(loadedChunkNameMap) do
 			local count = getMatchCount(splitedReqPath, splitted)
 			if (count > maxMatchCount) then
@@ -174,6 +182,7 @@ local function createHaltBreaker()
 		if lineBreakCallback then
 			sethook(c, lineBreakCallback, 'l')
 		else
+			--# assume sethook: WHATEVER
 			sethook(c)
 		end
 	end
