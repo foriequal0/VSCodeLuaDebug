@@ -152,6 +152,10 @@ debug.getchunknames = dummy
 local dummy2 --: function(string, integer)
 debug.sethalt = dummy2
 
+-- assume debug.clearhalt: function(string, integer)
+local dummy3 --: function(string)
+debug.clearhalt = dummy3
+
 
 -- 순정 모드 {{{
 local function createHaltBreaker()
@@ -162,7 +166,7 @@ local function createHaltBreaker()
 		loadedChunkNameMap[chunkname] = splitChunkName(chunkname)
 	end
 
-	local function findMostSimilarChunkName(path)
+	local function findMostSimilarChunkName(path) --: string --> string?
 		local splitedReqPath = splitChunkName(path)
 		local maxMatchCount = 0
 		local foundChunkName = nil --: string
@@ -195,9 +199,11 @@ local function createHaltBreaker()
 		return nil
 	end
 	return {
-		setBreakpoints = function(path, lines)
+		setBreakpoints = function(
+			path, --: string
+			lines) --: vector<integer>
 			local foundChunkName = findMostSimilarChunkName(path)
-			local verifiedLines = {}
+			local verifiedLines = {} --: map<integer, boolean>
 
 			if foundChunkName then
 				debug.clearhalt(foundChunkName)
@@ -238,11 +244,11 @@ local function createHaltBreaker()
 end
 
 local function createPureBreaker()
-	local lineBreakCallback = nil
+	local lineBreakCallback = nil --: function()
 	local breakpointsPerPath = {}
-	local chunknameToPathCache = {}
+	local chunknameToPathCache = {} --: map<string, string>
 
-	local function chunkNameToPath(chunkname)
+	local function chunkNameToPath(chunkname) --: string --> string
 		local cached = chunknameToPathCache[chunkname] 
 		if cached then
 			return cached
@@ -323,7 +329,7 @@ end
 
 -------------------------------------------------------------------------------
 -- 네트워크 유틸리티 {{{
-local function sendFully(str)
+local function sendFully(str) --: string
 	local first = 1
 	while first <= #str do
 		local sent = sock:send(str, first)
