@@ -19,9 +19,26 @@ local function defaultOnError(e)
 	print('****************************************************')
 end
 
+
+-- assume debug.getchunknames: function() --> map<string, true>
+local dummy --: function() --> WHATEVER
+debug.getchunknames = dummy
+
+-- assume debug.sethalt: function(string, integer)
+local dummy2 --: function(string, integer)
+debug.sethalt = dummy2
+
+-- assume debug.clearhalt: function(string, integer)
+local dummy3 --: function(string)
+debug.clearhalt = dummy3
+
+
+
+
 -------------------------------------------------------------------------------
 local sethook = debug.sethook
 debug.sethook = nil
+--# assume sethook: function(function() --> (), string) --> ()
 
 local cocreate = coroutine.create
 coroutine.create = function(f)
@@ -144,19 +161,6 @@ end
 local coroutineSet = {}
 setmetatable(coroutineSet, { __mode = 'v' })
 
--- assume debug.getchunknames: function() --> map<string, true>
-local dummy --: function() --> WHATEVER
-debug.getchunknames = dummy
-
--- assume debug.sethalt: function(string, integer)
-local dummy2 --: function(string, integer)
-debug.sethalt = dummy2
-
--- assume debug.clearhalt: function(string, integer)
-local dummy3 --: function(string)
-debug.clearhalt = dummy3
-
-
 -- 순정 모드 {{{
 local function createHaltBreaker()
 	-- chunkname 매칭 {
@@ -181,7 +185,7 @@ local function createHaltBreaker()
 	end
 	-- chunkname 매칭 }
 
-	local lineBreakCallback = nil
+	local lineBreakCallback = nil --: function()
 	local function updateCoroutineHook(c)
 		if lineBreakCallback then
 			sethook(c, lineBreakCallback, 'l')
@@ -215,18 +219,20 @@ local function createHaltBreaker()
 			return verifiedLines
 		end,
 
-		setLineBreak = function(callback)
-			if callback then
-				sethook(callback, 'l')
-			else
-				sethook()
-			end
+		setLineBreak =
+			--v function(callback: function())
+			function(callback)
+				if callback then
+					sethook(callback, 'l')
+				else
+					sethook()
+				end
 
-			lineBreakCallback = callback
-			for cid, c in pairs(coroutineSet) do
-				updateCoroutineHook(c)
-			end
-		end,
+				lineBreakCallback = callback
+				for cid, c in pairs(coroutineSet) do
+					updateCoroutineHook(c)
+				end
+			end,
 
 		coroutineAdded = function(c)
 			updateCoroutineHook(c)
@@ -272,7 +278,7 @@ local function createPureBreaker()
 		return foundPath
 	end
 
-	local entered = false
+	local entered = false --: boolean -- ★
 	local function hookfunc()
 		if entered then return false end
 		entered = true
@@ -366,7 +372,7 @@ end
 -- 네트워크 유틸리티 }}}
 
 -------------------------------------------------------------------------------
-local function debugLoop()
+local function debugLoop() --> ()
 	storedVariables = {}
 	nextVarRef = 1
 	while true do
