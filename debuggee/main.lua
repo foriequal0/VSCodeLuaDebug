@@ -4,6 +4,7 @@
 require 'strict'
 package.path = '?.lua;lua/?.lua;'
 local json = require 'dkjson'
+--# assume json: { encode = function(any) --> string, decode = function(string) --> any }
 
 local function onError(e)
 	print('[onError]' .. e)
@@ -35,7 +36,7 @@ local function d()
 	end
 end
 
-local function c(...)
+local function c(...) --: WHATEVER
 	(require 'c')(d)
 end
 

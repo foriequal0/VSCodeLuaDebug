@@ -1,0 +1,29 @@
+-- http://w3.impa.br/~diego/software/luasocket/tcp.html
+-- TODO: 이것 클래스다..;;; 클래스가 아직 없구나
+--# type socket_object =
+--# {
+--     accept = function() --> (socket_object, string?);
+--#     bind = function(string, integer) --> (1?, string?);
+--#     close = function();
+--#     connect = function(string, integer) --> (1?, string?);
+--#     getpeername = function() --> (string?);
+--#     getsockname = function() --> (string?, integer?);
+--#     getstats = function() --> (integer, integer, integer);
+--#     listen = function(integer) --> (1?, string?);
+--#     receive = function('*a' | '*l' | integer, string?) --> (string?, string?, string?);
+--#     send  = function(string, integer?, integer?) --> (integer?, string?);
+--#     setoption = function('keepalive' | 'linger' | 'reuseaddr' | 'tcp-nodelay', any) --> (1?);
+--#     setstats = function(integer, integer, integer) --> (1?);
+--#     settimeout = function(integer, string?);
+--#     shutdown = function('both' | 'send' | 'receive') --> (1);
+--# }
+--#
+local socket = {}
+
+function socket.tcp() --> socket_object
+end
+
+function socket.select() --> socket_object
+end
+
+return socket;

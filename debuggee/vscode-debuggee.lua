@@ -1,8 +1,11 @@
 local debuggee = {}
 
+--# type JSON = { encode = function(any) --> string, decode = function(string) --> any }
+--# type CDPRequest = { command = string }
+
 local socket = require 'socket.core'
-local json
-local handlers = {}
+local json --: JSON
+local handlers = {} --: map<string, function(CDPRequest)>
 local sock
 local sourceBasePath = '.'
 local storedVariables = {}
@@ -32,13 +35,35 @@ debug.sethalt = dummy2
 local dummy3 --: function(string)
 debug.clearhalt = dummy3
 
-
-
+-- assume debug.getinfo: function()
+local dummy4 --: function(integer, string) --> ()
+debug.getinfo = dummy4
 
 -------------------------------------------------------------------------------
 local sethook = debug.sethook
+local sethookc = debug.sethook -- 오버로드가 아직 없어서 우회.
 debug.sethook = nil
---# assume sethook: function(function() --> (), string) --> ()
+--# type SetHookCallback = function() --> ()
+--# assume sethook: function(SetHookCallback, string) --> ()
+--# assume sethookc: function(thread, SetHookCallback, string) --> ()
+
+--# assume sock: {
+--#     bind = function(string, integer) --> (1?, string?);
+--#     close = function();
+--#     connect = function(string, integer) --> (1?, string?);
+--#     getpeername = function() --> (string?);
+--#     getsockname = function() --> (string?, integer?);
+--#     getstats = function() --> (integer, integer, integer);
+--#     listen = function(integer) --> (1?, string?);
+--#     receive = function('*a' | '*l' | integer, string?) --> (string?, string?, string?);
+--#     send  = function(string, integer?, integer?) --> (integer?, string?);
+--#     setoption = function('keepalive' | 'linger' | 'reuseaddr' | 'tcp-nodelay', any) --> (1?);
+--#     setstats = function(integer, integer, integer) --> (1?);
+--#     settimeout = function(integer, string?);
+--#     shutdown = function('both' | 'send' | 'receive') --> (1);
+--# }
+
+
 
 local cocreate = coroutine.create
 coroutine.create = function(f)
@@ -158,7 +183,7 @@ if DO_TEST then
 end
 -- 패스 조작 }}}
 
-local coroutineSet = {}
+local coroutineSet = {} --: map<number, thread>
 setmetatable(coroutineSet, { __mode = 'v' })
 
 -- 순정 모드 {{{
@@ -185,13 +210,14 @@ local function createHaltBreaker()
 	end
 	-- chunkname 매칭 }
 
-	local lineBreakCallback = nil --: function()
-	local function updateCoroutineHook(c)
+	local lineBreakCallback = nil --: (function())
+
+	local function updateCoroutineHook(c) --: thread
 		if lineBreakCallback then
-			sethook(c, lineBreakCallback, 'l')
+			sethookc(c, lineBreakCallback, 'l')
 		else
 			--# assume sethook: WHATEVER
-			sethook(c)
+			sethookc(c)
 		end
 	end
 	local function sethalt(cname, ln)
@@ -219,20 +245,19 @@ local function createHaltBreaker()
 			return verifiedLines
 		end,
 
-		setLineBreak =
-			--v function(callback: function())
-			function(callback)
-				if callback then
-					sethook(callback, 'l')
-				else
-					sethook()
-				end
+		setLineBreak = function(callback)
+			--^ function(callback: function())
+			if callback then
+				sethook(callback, 'l')
+			else
+				sethook()
+			end
 
-				lineBreakCallback = callback
-				for cid, c in pairs(coroutineSet) do
-					updateCoroutineHook(c)
-				end
-			end,
+			lineBreakCallback = callback
+			for cid, c in pairs(coroutineSet) do
+				updateCoroutineHook(c)
+			end
+		end,
 
 		coroutineAdded = function(c)
 			updateCoroutineHook(c)
@@ -251,11 +276,11 @@ end
 
 local function createPureBreaker()
 	local lineBreakCallback = nil --: function()
-	local breakpointsPerPath = {}
+	local breakpointsPerPath = {} --: map<string, map<integer, boolean>>
 	local chunknameToPathCache = {} --: map<string, string>
 
 	local function chunkNameToPath(chunkname) --: string --> string
-		local cached = chunknameToPathCache[chunkname] 
+		local cached = chunknameToPathCache[chunkname]
 		if cached then
 			return cached
 		end
@@ -280,7 +305,7 @@ local function createPureBreaker()
 
 	local entered = false --: boolean -- ★
 	local function hookfunc()
-		if entered then return false end
+		if entered then return end
 		entered = true
 
 		if lineBreakCallback then
@@ -292,6 +317,7 @@ local function createPureBreaker()
 			local path = chunkNameToPath(info.source)
 			local bpSet = breakpointsPerPath[path] 
 			if bpSet and bpSet[info.currentline] then
+				--# assume _G: WHATEVER
 				_G.__halt__()
 			end
 		end
@@ -301,23 +327,25 @@ local function createPureBreaker()
 	sethook(hookfunc, 'l')
 
 	return {
-		setBreakpoints = function(path, lines)
-			local t = {}
-			local verifiedLines = {}
-			for _, ln in ipairs(lines) do
-				t[ln] = true
-				verifiedLines[ln] = ln
-			end
-			breakpointsPerPath[path] = t
-			return verifiedLines
-		end,
+		setBreakpoints =
+			--v function(path: string, lines: vector<integer>) --> map<integer, integer>
+			function(path, lines)
+				local t = {} --: map<integer, boolean>
+				local verifiedLines = {} --: map<integer, integer>
+				for _, ln in ipairs(lines) do
+					t[ln] = true
+					verifiedLines[ln] = ln
+				end
+				breakpointsPerPath[path] = t
+				return verifiedLines
+			end,
 
 		setLineBreak = function(callback)
 			lineBreakCallback = callback
 		end,
 
 		coroutineAdded = function(c)
-			sethook(c, hookfunc, 'l')
+			sethookc(c, hookfunc, 'l')
 		end,
 
 		-- 실험적으로 알아낸 값들-_-ㅅㅂ
@@ -355,6 +383,7 @@ local function sendMessage(msg)
 end
 
 -- 리시브는 블럭이 아니어야 할 거 같은데... 음... 블럭이어도 괜찮나?
+--v function() --> CDPRequest
 local function recvMessage()
 	local header = sock:receive('*l')
 	if (header == nil) then
@@ -367,12 +396,12 @@ local function recvMessage()
 	local bodySize = tonumber(header:sub(2))
 	local body = sock:receive(bodySize)
 
-	return json.decode(body)
+	return json.decode(body) --: CDPRequest
 end
 -- 네트워크 유틸리티 }}}
 
 -------------------------------------------------------------------------------
-local function debugLoop() --> ()
+local function debugLoop()
 	storedVariables = {}
 	nextVarRef = 1
 	while true do
@@ -397,8 +426,19 @@ local function debugLoop() --> ()
 end
 
 -------------------------------------------------------------------------------
+--# type DebuggeeConfig = {
+--# 	connectTimeout = number?,
+--# 	controllerHost = string?,
+--# 	controllerPort = integer?,
+--# 	onError = (function(string))?,
+--# 	redirectPrint = boolean?,
+--# }
+
 local sockArray = {}
-function debuggee.start(jsonLib, config)
+function debuggee.start(
+		jsonLib, --: JSON
+		config --: DebuggeeConfig?
+		) --> (boolean, string)
 	json = jsonLib
 	assert(jsonLib)
 	
