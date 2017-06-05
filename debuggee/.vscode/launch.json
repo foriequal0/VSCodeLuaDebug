@@ -10,7 +10,7 @@
             "arguments": "main.lua",
             "listenPublicly": false,
             "listenPort": 56789,
-            "encoding": "UTF-8"
+            "encoding": "UTF-8",
             "env": { "asdf": "qwer" }
         },
         {
